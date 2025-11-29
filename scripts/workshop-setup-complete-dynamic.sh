@@ -16,6 +16,32 @@ fi
 echo "📋 Using Stack: $STACK_NAME"
 echo "📋 Using Region: $REGION"
 
+# Retry function with exponential backoff
+retry_with_backoff() {
+    local max_attempts=10
+    local delay=2
+    local attempt=1
+    local command="$@"
+    
+    while [ $attempt -le $max_attempts ]; do
+        echo "  Attempt $attempt/$max_attempts..."
+        if eval "$command"; then
+            echo "  ✅ Success on attempt $attempt"
+            return 0
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            echo "  ❌ Failed after $max_attempts attempts"
+            return 1
+        fi
+        
+        echo "  ⏳ Waiting ${delay}s before retry..."
+        sleep $delay
+        delay=$((delay * 2))
+        attempt=$((attempt + 1))
+    done
+}
+
 # Function to get CloudFormation stack output
 get_stack_output() {
     local output_key="$1"
@@ -28,7 +54,7 @@ get_stack_output() {
 
 echo "📥 Fetching stack outputs..."
 
-# Get all required outputs from CloudFormation
+# Get all required outputs from CloudFormation (no retry needed - these are fast)
 MAIN_SECRET_ARN=$(get_stack_output "DatabaseSecretArn")
 IDR_SECRET_ARN=$(get_stack_output "IDRSecretArn")
 IOPS_SECRET_ARN=$(get_stack_output "IDRInstanceSecretArn")
@@ -58,34 +84,55 @@ echo "✅ Stack outputs fetched successfully"
 # Get database credentials from secrets
 echo "🔐 Fetching database credentials..."
 
-# Get Main DB credentials
-if [ -n "$MAIN_SECRET_ARN" ]; then
-    MAIN_SECRET=$(aws secretsmanager get-secret-value --secret-id "$MAIN_SECRET_ARN" --region $REGION --query SecretString --output text)
-    MAIN_HOST=$(echo $MAIN_SECRET | jq -r .host)
-    MAIN_PORT=$(echo $MAIN_SECRET | jq -r .port)
-    MAIN_USER=$(echo $MAIN_SECRET | jq -r .username)
-    MAIN_PASS=$(echo $MAIN_SECRET | jq -r .password)
-    MAIN_DB=$(echo $MAIN_SECRET | jq -r .dbname)
+# Get Main DB credentials with retry
+if [ -n "$MAIN_SECRET_ARN" ] && [ "$MAIN_SECRET_ARN" != "" ]; then
+    echo "Fetching main database credentials..."
+    if retry_with_backoff "aws secretsmanager get-secret-value --secret-id '$MAIN_SECRET_ARN' --region $REGION --query SecretString --output text > /tmp/main_secret.json"; then
+        MAIN_SECRET=$(cat /tmp/main_secret.json)
+        MAIN_HOST=$(echo $MAIN_SECRET | jq -r .host)
+        MAIN_PORT=$(echo $MAIN_SECRET | jq -r .port)
+        MAIN_USER=$(echo $MAIN_SECRET | jq -r .username)
+        MAIN_PASS=$(echo $MAIN_SECRET | jq -r .password)
+        MAIN_DB=$(echo $MAIN_SECRET | jq -r .dbname)
+        rm -f /tmp/main_secret.json
+    else
+        echo "❌ Failed to fetch main database credentials"
+        exit 1
+    fi
+else
+    echo "⚠️  Main secret ARN not available"
 fi
 
-# Get IDR ACU DB credentials
-if [ -n "$IDR_SECRET_ARN" ]; then
-    IDR_SECRET=$(aws secretsmanager get-secret-value --secret-id "$IDR_SECRET_ARN" --region $REGION --query SecretString --output text)
-    IDR_HOST=$(echo $IDR_SECRET | jq -r .host)
-    IDR_PORT=$(echo $IDR_SECRET | jq -r .port)
-    IDR_USER=$(echo $IDR_SECRET | jq -r .username)
-    IDR_PASS=$(echo $IDR_SECRET | jq -r .password)
-    IDR_DB=$(echo $IDR_SECRET | jq -r .dbname)
+# Get IDR ACU DB credentials with retry
+if [ -n "$IDR_SECRET_ARN" ] && [ "$IDR_SECRET_ARN" != "" ]; then
+    echo "Fetching IDR ACU database credentials..."
+    if retry_with_backoff "aws secretsmanager get-secret-value --secret-id '$IDR_SECRET_ARN' --region $REGION --query SecretString --output text > /tmp/idr_secret.json"; then
+        IDR_SECRET=$(cat /tmp/idr_secret.json)
+        IDR_HOST=$(echo $IDR_SECRET | jq -r .host)
+        IDR_PORT=$(echo $IDR_SECRET | jq -r .port)
+        IDR_USER=$(echo $IDR_SECRET | jq -r .username)
+        IDR_PASS=$(echo $IDR_SECRET | jq -r .password)
+        IDR_DB=$(echo $IDR_SECRET | jq -r .dbname)
+        rm -f /tmp/idr_secret.json
+    fi
+else
+    echo "⚠️  IDR ACU secret ARN not available"
 fi
 
-# Get IOPS DB credentials
-if [ -n "$IOPS_SECRET_ARN" ]; then
-    IOPS_SECRET=$(aws secretsmanager get-secret-value --secret-id "$IOPS_SECRET_ARN" --region $REGION --query SecretString --output text)
-    IOPS_HOST=$(echo $IOPS_SECRET | jq -r .host)
-    IOPS_PORT=$(echo $IOPS_SECRET | jq -r .port)
-    IOPS_USER=$(echo $IOPS_SECRET | jq -r .username)
-    IOPS_PASS=$(echo $IOPS_SECRET | jq -r .password)
-    IOPS_DB=$(echo $IOPS_SECRET | jq -r .dbname)
+# Get IOPS DB credentials with retry
+if [ -n "$IOPS_SECRET_ARN" ] && [ "$IOPS_SECRET_ARN" != "" ]; then
+    echo "Fetching IDR IOPS database credentials..."
+    if retry_with_backoff "aws secretsmanager get-secret-value --secret-id '$IOPS_SECRET_ARN' --region $REGION --query SecretString --output text > /tmp/iops_secret.json"; then
+        IOPS_SECRET=$(cat /tmp/iops_secret.json)
+        IOPS_HOST=$(echo $IOPS_SECRET | jq -r .host)
+        IOPS_PORT=$(echo $IOPS_SECRET | jq -r .port)
+        IOPS_USER=$(echo $IOPS_SECRET | jq -r .username)
+        IOPS_PASS=$(echo $IOPS_SECRET | jq -r .password)
+        IOPS_DB=$(echo $IOPS_SECRET | jq -r .dbname)
+        rm -f /tmp/iops_secret.json
+    fi
+else
+    echo "⚠️  IDR IOPS secret ARN not available"
 fi
 
 echo "✅ Database credentials fetched"
@@ -235,7 +282,7 @@ echo "✅ Python dependencies installed"
 if [ -n "$IOPS_HOST" ] && [ -n "$IOPS_PASS" ]; then
     echo "🔧 Setting up pgbench on IDR IOPS instance..."
     export PGPASSWORD=$IOPS_PASS
-    pgbench -i -s 200 -h $IOPS_HOST -p $IOPS_PORT -U $IOPS_USER -d $IOPS_DB 2>&1 || echo "⚠️  pgbench setup failed (may already exist)"
+    retry_with_backoff "pgbench -i -s 200 -h $IOPS_HOST -p $IOPS_PORT -U $IOPS_USER -d $IOPS_DB" || echo "⚠️  pgbench setup failed (may already exist)"
     unset PGPASSWORD
     echo "✅ pgbench setup completed"
 else
@@ -244,16 +291,22 @@ fi
 
 # Run database setup scripts on main database
 echo "🗄️ Running database setup scripts on main database..."
-bash /workshop/scripts/07-database-setup.sh "$MAIN_HOST" "$MAIN_PORT" "$MAIN_DB" "$MAIN_USER" "$MAIN_PASS" "$REGION" || echo "⚠️  Database setup had warnings (may already be configured)"
+retry_with_backoff "bash /workshop/scripts/07-database-setup.sh '$MAIN_HOST' '$MAIN_PORT' '$MAIN_DB' '$MAIN_USER' '$MAIN_PASS' '$REGION'" || echo "⚠️  Database setup had warnings (may already be configured)"
 
 # Run extensions on IDR ACU cluster
-echo "🔌 Installing extensions on IDR ACU cluster..."
-PGPASSWORD="$IDR_PASS" psql -h "$IDR_HOST" -p "$IDR_PORT" -U "$IDR_USER" -d "$IDR_DB" -f /workshop/scripts/database/01-extensions.sql || echo "⚠️  Extensions may already be installed on IDR ACU"
+if [ -n "$IDR_HOST" ] && [ -n "$IDR_PASS" ]; then
+    echo "🔌 Installing extensions on IDR ACU cluster..."
+    export PGPASSWORD="$IDR_PASS"
+    retry_with_backoff "psql -h '$IDR_HOST' -p '$IDR_PORT' -U '$IDR_USER' -d '$IDR_DB' -f /workshop/scripts/database/01-extensions.sql" || echo "⚠️  Extensions may already be installed on IDR ACU"
+    unset PGPASSWORD
+fi
 
 # Run extensions on IDR IOPS instance (if available)
 if [ -n "$IOPS_HOST" ] && [ "$IOPS_HOST" != "None" ]; then
     echo "🔌 Installing extensions on IDR IOPS instance..."
-    PGPASSWORD="$IOPS_PASS" psql -h "$IOPS_HOST" -p "$IOPS_PORT" -U "$IOPS_USER" -d "$IOPS_DB" -f /workshop/scripts/database/01-extensions.sql || echo "⚠️  Extensions may already be installed on IDR IOPS"
+    export PGPASSWORD="$IOPS_PASS"
+    retry_with_backoff "psql -h '$IOPS_HOST' -p '$IOPS_PORT' -U '$IOPS_USER' -d '$IOPS_DB' -f /workshop/scripts/database/01-extensions.sql" || echo "⚠️  Extensions may already be installed on IDR IOPS"
+    unset PGPASSWORD
 fi
 
 # Enable Performance Insights on all database instances
@@ -266,29 +319,25 @@ enable_performance_insights() {
     
     echo "  Checking $instance_name ($instance_id)..."
     
-    # Check if Performance Insights is enabled
-    pi_enabled=$(aws rds describe-db-instances \
-        --db-instance-identifier "$instance_id" \
-        --region "$REGION" \
-        --query 'DBInstances[0].PerformanceInsightsEnabled' \
-        --output text 2>/dev/null)
-    
-    if [ "$pi_enabled" = "True" ]; then
-        echo "  ✅ Performance Insights already enabled on $instance_name"
-    else
-        echo "  🔧 Enabling Performance Insights on $instance_name..."
-        aws rds modify-db-instance \
-            --db-instance-identifier "$instance_id" \
-            --enable-performance-insights \
-            --performance-insights-retention-period 7 \
-            --apply-immediately \
-            --region "$REGION" >/dev/null 2>&1
+    # Check if Performance Insights is enabled with retry
+    if retry_with_backoff "aws rds describe-db-instances --db-instance-identifier '$instance_id' --region '$REGION' --query 'DBInstances[0].PerformanceInsightsEnabled' --output text > /tmp/pi_status.txt"; then
+        pi_enabled=$(cat /tmp/pi_status.txt)
+        rm -f /tmp/pi_status.txt
         
-        if [ $? -eq 0 ]; then
-            echo "  ✅ Performance Insights enabled on $instance_name"
+        if [ "$pi_enabled" = "True" ]; then
+            echo "  ✅ Performance Insights already enabled on $instance_name"
         else
-            echo "  ⚠️  Failed to enable Performance Insights on $instance_name"
+            echo "  🔧 Enabling Performance Insights on $instance_name..."
+            retry_with_backoff "aws rds modify-db-instance --db-instance-identifier '$instance_id' --enable-performance-insights --performance-insights-retention-period 7 --apply-immediately --region '$REGION'" >/dev/null 2>&1
+            
+            if [ $? -eq 0 ]; then
+                echo "  ✅ Performance Insights enabled on $instance_name"
+            else
+                echo "  ⚠️  Failed to enable Performance Insights on $instance_name"
+            fi
         fi
+    else
+        echo "  ⚠️  Failed to check Performance Insights status on $instance_name"
     fi
 }
 
