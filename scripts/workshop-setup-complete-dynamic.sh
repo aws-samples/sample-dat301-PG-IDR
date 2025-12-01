@@ -412,6 +412,35 @@ done
 
 echo "✅ Table truncated"
 
+# Configure code-server settings for optimal workshop experience
+echo "⚙️ Configuring code-server settings..."
+
+# Create code-server settings directory
+mkdir -p /home/ec2-user/.local/share/code-server/User
+
+# Copy workshop-optimized settings
+cat > /home/ec2-user/.local/share/code-server/User/settings.json << 'EOF'
+{
+  "workbench.startupEditor": "none",
+  "terminal.integrated.enablePersistentSessions": false,
+  "terminal.integrated.confirmOnExit": "never",
+  "terminal.integrated.copyOnSelection": true,
+  "terminal.integrated.rightClickBehavior": "paste",
+  "security.workspace.trust.enabled": false,
+  "files.autoSave": "afterDelay",
+  "editor.fontSize": 16,
+  "terminal.integrated.fontSize": 16,
+  "chat.disableAIFeatures": true,
+  "editor.fontLigatures": false,
+  "terminal.integrated.fontWeight": "normal"
+}
+EOF
+
+# Ensure proper ownership
+chown -R ec2-user:ec2-user /home/ec2-user/.local/share/code-server
+
+echo "✅ Code-server settings configured"
+
 echo ""
 echo "🎉 Workshop setup completed successfully!"
 echo ""
