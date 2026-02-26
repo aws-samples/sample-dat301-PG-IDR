@@ -1,28 +1,28 @@
 #!/bin/bash
 echo "📦 DAT301 Workshop - Python Dependencies Setup"
 
-# Install uv for participant user
-su - participant -c 'bash -s' << 'EOF'
-if [ ! -f "$HOME/.local/bin/uv" ]; then
+# Install uv in participant's home directory
+PARTICIPANT_HOME="/home/participant"
+
+if [ ! -f "$PARTICIPANT_HOME/.local/bin/uv" ]; then
+    export HOME="$PARTICIPANT_HOME"
     curl -LsSf https://astral.sh/uv/install.sh | sh
     echo "✅ UV installed"
 else
     echo "UV already installed"
 fi
 
-# Add UV to PATH if not already there
-if ! grep -q ".local/bin" ~/.bashrc; then
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+# Add UV to PATH in participant's bashrc
+if ! grep -q ".local/bin" "$PARTICIPANT_HOME/.bashrc"; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$PARTICIPANT_HOME/.bashrc"
     echo "✅ Added UV to PATH"
 fi
-EOF
 
-# Set up Python virtual environment as participant user
-su - participant -c 'bash -s' << 'EOF'
+# Set up Python virtual environment in /workshop
 cd /workshop
 
 # Load pyenv environment
-export PYENV_ROOT="$HOME/.pyenv"
+export PYENV_ROOT="$PARTICIPANT_HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
@@ -44,6 +44,8 @@ pip install --upgrade pip
 pip install streamlit boto3 psycopg2-binary pydantic fastapi uvicorn python-jose[cryptography] loguru httpx python-multipart pandas plotly mcp
 
 echo "✅ Python dependencies installed"
-EOF
+
+# Fix ownership
+chown -R participant:participant "$PARTICIPANT_HOME/.local" "$PARTICIPANT_HOME/.bashrc" /workshop/.venv
 
 echo "✅ Python dependencies setup completed"
