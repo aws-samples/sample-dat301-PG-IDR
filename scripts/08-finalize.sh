@@ -37,17 +37,17 @@ All configuration is in `/workshop/.env` file.
 Run `./setup_database.sh` to create database roles and sample data.
 EOF
 
-# Start services
+# Start services (using template service with participant user)
 systemctl daemon-reload
-systemctl enable code-server
-systemctl start code-server
+systemctl enable code-server@participant
+systemctl start code-server@participant
 
 # Final ownership fix
-chown -R ec2-user:ec2-user /workshop/
-chown -R ec2-user:ec2-user /home/ec2-user/
+chown -R participant:participant /workshop/
+chown -R participant:participant /home/participant/
 
 echo "🎉 Workshop setup completed successfully!"
 echo "📋 Services Status:"
-systemctl is-active code-server && echo "✅ Code Server: Running" || echo "❌ Code Server: Failed"
+systemctl is-active code-server@participant && echo "✅ Code Server: Running" || echo "❌ Code Server: Failed"
 echo "📁 Workshop directory: /workshop"
 echo "🌐 Access via CloudFront URL"

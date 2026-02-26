@@ -12,10 +12,10 @@ if [ ! -f /usr/bin/code-server ]; then
     rpm -i /tmp/code-server.rpm
 fi
 
-# Configure code-server for ec2-user
-mkdir -p /home/ec2-user/.config/code-server
-cat > /home/ec2-user/.config/code-server/config.yaml << EOF
-bind-addr: 0.0.0.0:8080
+# Configure code-server for participant user (DAT409 security pattern)
+mkdir -p /home/participant/.config/code-server
+cat > /home/participant/.config/code-server/config.yaml << EOF
+bind-addr: 127.0.0.1:8080
 auth: password
 password: ${CODE_EDITOR_PASSWORD:-TempPass123!}
 cert: false
@@ -26,8 +26,8 @@ disable-file-downloads: false
 EOF
 
 # Create VS Code user settings
-mkdir -p /home/ec2-user/.local/share/code-server/User
-cat > /home/ec2-user/.local/share/code-server/User/settings.json << 'EOF'
+mkdir -p /home/participant/.local/share/code-server/User
+cat > /home/participant/.local/share/code-server/User/settings.json << 'EOF'
 {
   "workbench.startupEditor": "none",
   "terminal.integrated.enablePersistentSessions": false,
@@ -40,7 +40,7 @@ cat > /home/ec2-user/.local/share/code-server/User/settings.json << 'EOF'
 EOF
 
 # Create workspace file to open /workshop folder by default
-cat > /home/ec2-user/workshop.code-workspace << 'EOF'
+cat > /home/participant/workshop.code-workspace << 'EOF'
 {
   "folders": [
     {
@@ -51,18 +51,18 @@ cat > /home/ec2-user/workshop.code-workspace << 'EOF'
 }
 EOF
 
-# Create systemd service for code-server
-cat > /etc/systemd/system/code-server.service << 'EOF'
+# Create systemd TEMPLATE service for code-server (DAT409 security pattern)
+cat > /etc/systemd/system/code-server@.service << 'EOF'
 [Unit]
-Description=code-server
+Description=code-server for %i
 After=network.target
 
 [Service]
 Type=simple
-User=ec2-user
+User=%i
 WorkingDirectory=/workshop
-Environment="HOME=/home/ec2-user"
-ExecStart=/bin/bash -c 'export PYENV_ROOT="$HOME/.pyenv" && export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH" && eval "$(pyenv init -)" && /usr/bin/code-server --bind-addr 0.0.0.0:8080 --auth password /workshop'
+Environment="HOME=/home/%i"
+ExecStart=/bin/bash -c 'export PYENV_ROOT="$HOME/.pyenv" && export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH" && eval "$(pyenv init -)" && /usr/bin/code-server --bind-addr 127.0.0.1:8080 --auth password /workshop'
 Restart=always
 RestartSec=10
 
@@ -71,6 +71,6 @@ WantedBy=multi-user.target
 EOF
 
 # Set ownership
-chown -R ec2-user:ec2-user /home/ec2-user/
+chown -R participant:participant /home/participant/
 
-echo "✅ Code Server setup completed"
+echo "✅ Code Server setup completed (localhost binding, participant user)"
