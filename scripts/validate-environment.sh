@@ -47,9 +47,9 @@ fi
 echo ""
 echo "3. Pyenv Installation"
 echo "---------------------"
-if sudo -u ec2-user bash -c '[ -d "$HOME/.pyenv" ]'; then
+if sudo -u participant bash -c '[ -d "$HOME/.pyenv" ]'; then
     check_pass "Pyenv installed in user space"
-    PYENV_PYTHON=$(sudo -u ec2-user bash -c 'export PYENV_ROOT="$HOME/.pyenv" && export PATH="$PYENV_ROOT/bin:$PATH" && eval "$(pyenv init -)" && cd /workshop && python --version 2>&1')
+    PYENV_PYTHON=$(sudo -u participant bash -c 'export PYENV_ROOT="$HOME/.pyenv" && export PATH="$PYENV_ROOT/bin:$PATH" && eval "$(pyenv init -)" && cd /workshop && python --version 2>&1')
     if [[ $PYENV_PYTHON == *"3.11.13"* ]]; then
         check_pass "Workshop Python: $PYENV_PYTHON"
     else
@@ -62,11 +62,11 @@ fi
 echo ""
 echo "4. UV Installation"
 echo "------------------"
-if sudo -u ec2-user bash -c '[ -f "$HOME/.local/bin/uv" ]'; then
-    UV_VERSION=$(sudo -u ec2-user bash -c '$HOME/.local/bin/uv --version 2>&1')
+if sudo -u participant bash -c '[ -f "$HOME/.local/bin/uv" ]'; then
+    UV_VERSION=$(sudo -u participant bash -c '$HOME/.local/bin/uv --version 2>&1')
     check_pass "UV installed: $UV_VERSION"
     
-    if sudo -u ec2-user bash -c 'grep -q ".local/bin" ~/.bashrc'; then
+    if sudo -u participant bash -c 'grep -q ".local/bin" ~/.bashrc'; then
         check_pass "UV in PATH (.bashrc)"
     else
         check_warn "UV not in PATH - may not be accessible in all contexts"
@@ -272,19 +272,19 @@ fi
 echo ""
 echo "18. PostgreSQL Connection Functions"
 echo "------------------------------------"
-if grep -q "function psql_main()" /home/ec2-user/.bashrc 2>/dev/null; then
+if grep -q "function psql_main()" /home/participant/.bashrc 2>/dev/null; then
     check_pass "psql_main function defined in .bashrc"
 else
     check_warn "psql_main function not defined in .bashrc"
 fi
 
-if grep -q "function psql_idr_acu()" /home/ec2-user/.bashrc 2>/dev/null; then
+if grep -q "function psql_idr_acu()" /home/participant/.bashrc 2>/dev/null; then
     check_pass "psql_idr_acu function defined in .bashrc"
 else
     check_warn "psql_idr_acu function not defined (may not be deployed)"
 fi
 
-if grep -q "function psql_idr_iops()" /home/ec2-user/.bashrc 2>/dev/null; then
+if grep -q "function psql_idr_iops()" /home/participant/.bashrc 2>/dev/null; then
     check_pass "psql_idr_iops function defined in .bashrc"
 else
     check_warn "psql_idr_iops function not defined (may not be deployed)"
@@ -293,19 +293,19 @@ fi
 echo ""
 echo "19. Load Testing Aliases"
 echo "------------------------"
-if grep -q "alias iops-test=" /home/ec2-user/.bashrc 2>/dev/null; then
+if grep -q "alias iops-test=" /home/participant/.bashrc 2>/dev/null; then
     check_pass "iops-test alias defined in .bashrc"
 else
     check_warn "iops-test alias not defined"
 fi
 
-if grep -q "alias acu-test=" /home/ec2-user/.bashrc 2>/dev/null; then
+if grep -q "alias acu-test=" /home/participant/.bashrc 2>/dev/null; then
     check_pass "acu-test alias defined in .bashrc"
 else
     check_warn "acu-test alias not defined"
 fi
 
-if grep -q "alias main-test=" /home/ec2-user/.bashrc 2>/dev/null; then
+if grep -q "alias main-test=" /home/participant/.bashrc 2>/dev/null; then
     check_pass "main-test alias defined in .bashrc"
 else
     check_warn "main-test alias not defined"
@@ -391,7 +391,7 @@ echo "22. Main Database Connectivity & Extensions"
 echo "-------------------------------------------"
 
 # Source bashrc to get psql functions
-source /home/ec2-user/.bashrc 2>/dev/null
+source /home/participant/.bashrc 2>/dev/null
 
 # Test main database connection using alias
 if declare -f psql_main >/dev/null 2>&1; then
