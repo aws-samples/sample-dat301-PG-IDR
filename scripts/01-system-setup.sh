@@ -9,7 +9,13 @@ dnf remove -y curl-minimal || true
 
 # Install basic packages
 dnf install -y git wget unzip jq
-dnf groupinstall -y "Development Tools"
+
+# Skip Development Tools group install - it tries to remove protected packages
+# Install only essential development packages individually
+echo "📦 Installing essential development packages..."
+dnf install -y gcc gcc-c++ make automake autoconf libtool || {
+    echo "⚠️  Some development packages failed to install, continuing..."
+}
 
 # Install AWS CLI v2
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
