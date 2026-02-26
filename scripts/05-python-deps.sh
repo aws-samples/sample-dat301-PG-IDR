@@ -1,9 +1,9 @@
 #!/bin/bash
 echo "📦 DAT301 Workshop - Python Dependencies Setup (Safe Mode)"
 
-# Install uv for ec2-user (not root)
-sudo -u ec2-user bash << 'EOF'
-cd /home/ec2-user
+# Install uv for participant (not root)
+sudo -u participant bash << 'EOF'
+cd /home/participant
 if [ ! -f "$HOME/.local/bin/uv" ]; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
 else
@@ -17,8 +17,8 @@ if ! grep -q ".local/bin" ~/.bashrc; then
 fi
 EOF
 
-# Set up Python environment as ec2-user
-sudo -u ec2-user bash << 'EOF'
+# Set up Python environment as participant
+sudo -u participant bash << 'EOF'
 cd /workshop
 
 # Load pyenv environment
