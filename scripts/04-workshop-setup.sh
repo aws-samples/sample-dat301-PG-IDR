@@ -57,7 +57,15 @@ COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID
 COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID
 EOF
 
+# Disable git operations for security (DAT409 security pattern)
+if [ -d "/workshop/.git" ]; then
+    echo "🔒 Disabling git operations for security..."
+    chmod -R 000 "/workshop/.git" 2>/dev/null || true
+    rm -rf "/workshop/.git/hooks" 2>/dev/null || true
+    echo "✅ Git operations disabled (participants cannot push changes)"
+fi
+
 # Set ownership
-chown -R ec2-user:ec2-user /workshop/
+chown -R participant:participant /workshop/
 
 echo "✅ Workshop environment setup completed"

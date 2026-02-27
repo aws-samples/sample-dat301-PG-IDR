@@ -121,8 +121,8 @@ DEFAULT_PASSWORD=${DEFAULT_PASSWORD:-TempPass123!}
 MAIN_STACK_NAME=${MAIN_STACK_NAME:-}
 EOF
 
-# Set up environment variables for ec2-user
-cat >> /home/ec2-user/.bashrc << EOF
+# Set up environment variables for participant
+cat >> /home/participant/.bashrc << EOF
 
 # DAT301 Workshop Environment Variables (From Main Stack: ${MAIN_STACK_NAME})
 export AWS_REGION="$AWS_REGION"
@@ -163,9 +163,47 @@ fi
 echo "DAT301 Workshop environment loaded! Use 'workshop-env' to see all variables."
 EOF
 
-# Set ownership
-chown ec2-user:ec2-user /workshop/.env
+# Set ownership and SECURE PERMISSIONS (DAT409 security pattern)
+chown participant:participant /workshop/.env
+chmod 600 /workshop/.env
 
 echo "✅ Environment configuration completed from main stack: ${MAIN_STACK_NAME}"
-echo "📁 Environment file created: /workshop/.env"
+echo "📁 Environment file created: /workshop/.env (permissions: 600)"
+
+# Create .pgpass file for secure PostgreSQL authentication (DAT409 security pattern)
+if [ -n "$DB_ENDPOINT" ] && [ -n "$DB_SECRET_ARN" ]; then
+    echo "🔐 Creating .pgpass file for secure database access..."
+    
+    # Get database credentials from Secrets Manager
+    DB_SECRET=$(aws secretsmanager get-secret-value \
+        --secret-id "$DB_SECRET_ARN" \
+        --region "$AWS_REGION" \
+        --query SecretString \
+        --output text 2>/dev/null)
+    
+    if [ -n "$DB_SECRET" ]; then
+        DB_USER=$(echo "$DB_SECRET" | jq -r '.username // .Username // "postgres"')
+        DB_PASSWORD=$(echo "$DB_SECRET" | jq -r '.password // .Password // ""')
+        
+        if [ -n "$DB_PASSWORD" ]; then
+            cat > "/home/participant/.pgpass" << PGPASS_EOF
+${DB_ENDPOINT}:${DB_PORT:-5432}:workshop_db:${DB_USER}:${DB_PASSWORD}
+${DB_ENDPOINT}:${DB_PORT:-5432}:*:${DB_USER}:${DB_PASSWORD}
+PGPASS_EOF
+            
+            chmod 600 "/home/participant/.pgpass"
+            chown participant:participant "/home/participant/.pgpass"
+            
+            echo "✅ .pgpass file created (permissions: 600)"
+            echo "   PostgreSQL commands will no longer require password prompts"
+        else
+            echo "⚠️  Could not extract password from secret"
+        fi
+    else
+        echo "⚠️  Could not retrieve database secret"
+    fi
+else
+    echo "⚠️  Database credentials not available, skipping .pgpass creation"
+fi
+
 echo "🔄 Run 'source ~/.bashrc' or start a new shell to load environment"
