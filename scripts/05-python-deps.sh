@@ -18,34 +18,27 @@ if ! grep -q ".local/bin" "$PARTICIPANT_HOME/.bashrc"; then
     echo "✅ Added UV to PATH"
 fi
 
+# Make uv available for this script
+export PATH="$PARTICIPANT_HOME/.local/bin:$PATH"
+
 # Set up Python virtual environment in /workshop
 cd /workshop
 
-# Load pyenv environment
-export PYENV_ROOT="$PARTICIPANT_HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
-
-echo "Using Python: $(python --version)"
-echo "Python path: $(which python)"
-
-# Create virtual environment
+# Use uv to create venv (it downloads python automatically, no pyenv needed)
 if [ ! -d ".venv" ]; then
-    python -m venv .venv
+    uv venv .venv --python 3.12
     echo "✅ Virtual environment created"
 else
     echo "Virtual environment already exists"
 fi
 
-source .venv/bin/activate
-
-# Install dependencies
-pip install --upgrade pip
-pip install streamlit boto3 psycopg2-binary pydantic fastapi uvicorn python-jose[cryptography] loguru httpx python-multipart pandas plotly mcp
+# Install dependencies using uv (much faster than pip)
+uv pip install --python .venv/bin/python streamlit boto3 psycopg2-binary pydantic fastapi uvicorn "python-jose[cryptography]" loguru httpx python-multipart pandas plotly mcp
 
 echo "✅ Python dependencies installed"
 
 # Fix ownership
-chown -R participant:participant "$PARTICIPANT_HOME/.local" "$PARTICIPANT_HOME/.bashrc" /workshop/.venv
+chown -R participant:participant "$PARTICIPANT_HOME/.local" "$PARTICIPANT_HOME/.bashrc"
+chown -R participant:participant /workshop/.venv
 
 echo "✅ Python dependencies setup completed"
