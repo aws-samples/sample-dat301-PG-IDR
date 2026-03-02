@@ -263,18 +263,15 @@ echo "✅ Environment variables configured"
 echo "🐍 Setting up Python virtual environment..."
 cd /workshop/mahavat_agent
 
-# Create venv if it doesn't exist
+# Use uv to create venv with Python 3.12 (strands-agents requires >= 3.10)
+export PATH="/home/participant/.local/bin:$PATH"
 if [ ! -d "venv" ]; then
-    python3 -m venv venv
+    uv venv venv --python 3.12
     echo "✅ Virtual environment created"
 fi
 
-# Activate and install requirements
-source venv/bin/activate
-
 echo "📦 Installing Python dependencies..."
-pip3 install -q -r requirements.txt
-deactivate
+uv pip install --python venv/bin/python -r requirements.txt
 
 echo "✅ Python dependencies installed"
 
