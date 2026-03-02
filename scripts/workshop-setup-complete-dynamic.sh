@@ -139,7 +139,7 @@ echo "✅ Database credentials fetched"
 
 # Create psql connection functions in bashrc
 echo "📝 Creating psql connection functions..."
-cat >> /home/ec2-user/.bashrc << BASHRC_EOF
+cat >> /home/participant/.bashrc << BASHRC_EOF
 
 # PostgreSQL Connection Functions (Dynamic)
 function psql_main() {
@@ -174,7 +174,7 @@ echo "✅ psql functions created"
 
 # Create comprehensive bashrc with all environment variables
 echo "🔧 Creating workshop environment variables..."
-cat >> /home/ec2-user/.bashrc << BASHRC_ENV_EOF
+cat >> /home/participant/.bashrc << BASHRC_ENV_EOF
 
 # DAT301 Workshop Environment Variables (Dynamic)
 
@@ -389,8 +389,8 @@ aws cognito-idp admin-set-user-password \
 echo "✅ Cognito demo user configured"
 
 # Set ownership
-chown -R ec2-user:ec2-user /workshop
-chown ec2-user:ec2-user /home/ec2-user/.bashrc
+chown -R participant:participant /workshop
+chown participant:participant /home/participant/.bashrc
 
 sleep 300
 
@@ -416,10 +416,10 @@ echo "✅ Table truncated"
 echo "⚙️ Configuring code-server settings..."
 
 # Create code-server settings directory
-mkdir -p /home/ec2-user/.local/share/code-server/User
+mkdir -p /home/participant/.local/share/code-server/User
 
 # Copy workshop-optimized settings
-cat > /home/ec2-user/.local/share/code-server/User/settings.json << 'EOF'
+cat > /home/participant/.local/share/code-server/User/settings.json << 'EOF'
 {
   "workbench.startupEditor": "none",
   "terminal.integrated.enablePersistentSessions": false,
@@ -437,7 +437,7 @@ cat > /home/ec2-user/.local/share/code-server/User/settings.json << 'EOF'
 EOF
 
 # Ensure proper ownership
-chown -R ec2-user:ec2-user /home/ec2-user/.local/share/code-server
+chown -R participant:participant /home/participant/.local/share/code-server
 
 echo "✅ Code-server settings configured"
 
