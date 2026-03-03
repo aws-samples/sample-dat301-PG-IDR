@@ -25,22 +25,14 @@ else
     echo "Skipping mahavat-agent download - S3 variables not set"
 fi
 
-# Get CloudFormation outputs (only if variables are set)
-if [ -n "${WORKSHOP_STACK_NAME}" ] && [ -n "${AWS_REGION}" ]; then
-    echo "Getting database information from CloudFormation stacks..."
-    DB_ENDPOINT=$(aws cloudformation describe-stacks --stack-name "${WORKSHOP_STACK_NAME}" --region "${AWS_REGION}" --query 'Stacks[0].Outputs[?OutputKey==`DatabaseEndpoint`].OutputValue' --output text 2>/dev/null || echo "")
-    DB_SECRET_ARN=$(aws cloudformation describe-stacks --stack-name "${WORKSHOP_STACK_NAME}" --region "${AWS_REGION}" --query 'Stacks[0].Outputs[?OutputKey==`DatabaseSecretArn`].OutputValue' --output text 2>/dev/null || echo "")
-    DB_CLUSTER_ARN="arn:aws:rds:${AWS_REGION}:${AWS_ACCOUNT_ID}:cluster:$(echo $DB_ENDPOINT | cut -d'.' -f1)"
-    COGNITO_USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name "${WORKSHOP_STACK_NAME}" --region "${AWS_REGION}" --query 'Stacks[0].Outputs[?OutputKey==`CognitoUserPoolId`].OutputValue' --output text 2>/dev/null || echo "")
-    COGNITO_CLIENT_ID=$(aws cloudformation describe-stacks --stack-name "${WORKSHOP_STACK_NAME}" --region "${AWS_REGION}" --query 'Stacks[0].Outputs[?OutputKey==`CognitoClientId`].OutputValue' --output text 2>/dev/null || echo "")
-else
-    echo "Skipping CloudFormation queries - stack variables not set"
-    DB_ENDPOINT="localhost"
-    DB_SECRET_ARN=""
-    DB_CLUSTER_ARN=""
-    COGNITO_USER_POOL_ID=""
-    COGNITO_CLIENT_ID=""
-fi
+# Get CloudFormation outputs - skip during bootstrap (dynamic script handles this later)
+# The stack may still be CREATE_IN_PROGRESS at this point
+echo "Skipping CloudFormation queries - will be configured by workshop-setup-complete-dynamic.sh"
+DB_ENDPOINT=""
+DB_SECRET_ARN=""
+DB_CLUSTER_ARN=""
+COGNITO_USER_POOL_ID=""
+COGNITO_CLIENT_ID=""
 
 # Create .env file
 cat > /workshop/.env << EOF

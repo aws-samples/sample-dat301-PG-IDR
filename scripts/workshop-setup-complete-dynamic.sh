@@ -388,6 +388,8 @@ echo "✅ Cognito demo user configured"
 # Set ownership
 chown -R participant:participant /workshop
 chown participant:participant /home/participant/.bashrc
+chown -R participant:participant /home/participant/.cache 2>/dev/null || true
+chown -R participant:participant /home/participant/.local 2>/dev/null || true
 
 sleep 300
 

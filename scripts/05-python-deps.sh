@@ -39,6 +39,7 @@ echo "✅ Python dependencies installed"
 
 # Fix ownership
 chown -R participant:participant "$PARTICIPANT_HOME/.local" "$PARTICIPANT_HOME/.bashrc"
+chown -R participant:participant "$PARTICIPANT_HOME/.cache" 2>/dev/null || true
 chown -R participant:participant /workshop/.venv
 
 echo "✅ Python dependencies setup completed"
