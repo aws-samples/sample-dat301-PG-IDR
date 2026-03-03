@@ -47,26 +47,26 @@ fi
 echo ""
 echo "3. Pyenv Installation"
 echo "---------------------"
-if sudo -u participant bash -c '[ -d "$HOME/.pyenv" ]'; then
+if [ -d "/home/participant/.pyenv" ]; then
     check_pass "Pyenv installed in user space"
-    PYENV_PYTHON=$(sudo -u participant bash -c 'export PYENV_ROOT="$HOME/.pyenv" && export PATH="$PYENV_ROOT/bin:$PATH" && eval "$(pyenv init -)" && cd /workshop && python --version 2>&1')
-    if [[ $PYENV_PYTHON == *"3.11.13"* ]]; then
+    PYENV_PYTHON=$(PYENV_ROOT="/home/participant/.pyenv" PATH="/home/participant/.pyenv/bin:$PATH" bash -c 'eval "$(pyenv init -)" && cd /workshop && python --version 2>&1')
+    if [[ $PYENV_PYTHON == *"3.11"* ]]; then
         check_pass "Workshop Python: $PYENV_PYTHON"
     else
-        check_warn "Workshop Python version: $PYENV_PYTHON (expected 3.11.13)"
+        check_warn "Workshop Python version: $PYENV_PYTHON (expected 3.11.x)"
     fi
 else
-    check_fail "Pyenv not installed"
+    check_warn "Pyenv not installed (using uv for Python management instead)"
 fi
 
 echo ""
 echo "4. UV Installation"
 echo "------------------"
-if sudo -u participant bash -c '[ -f "$HOME/.local/bin/uv" ]'; then
-    UV_VERSION=$(sudo -u participant bash -c '$HOME/.local/bin/uv --version 2>&1')
+if [ -f "/home/participant/.local/bin/uv" ]; then
+    UV_VERSION=$(/home/participant/.local/bin/uv --version 2>&1)
     check_pass "UV installed: $UV_VERSION"
     
-    if sudo -u participant bash -c 'grep -q ".local/bin" ~/.bashrc'; then
+    if grep -q ".local/bin" /home/participant/.bashrc 2>/dev/null; then
         check_pass "UV in PATH (.bashrc)"
     else
         check_warn "UV not in PATH - may not be accessible in all contexts"
@@ -101,10 +101,10 @@ else
     check_fail "Code Server not installed"
 fi
 
-if [ -f /etc/systemd/system/code-server.service ]; then
+if [ -f /etc/systemd/system/code-server.service ] || [ -f /etc/systemd/system/code-server@.service ]; then
     check_pass "Code Server systemd service configured"
     
-    if systemctl is-active --quiet code-server; then
+    if systemctl is-active --quiet code-server 2>/dev/null || systemctl is-active --quiet "code-server@participant" 2>/dev/null; then
         check_pass "Code Server service running"
     else
         check_warn "Code Server service not running"
@@ -321,7 +321,7 @@ if [ -d /workshop/mahavat_agent ]; then
         check_pass "Mahavat agent virtual environment exists"
         
         # Check if strands packages are installed
-        if /workshop/mahavat_agent/venv/bin/pip list 2>/dev/null | grep -q "strands-agents"; then
+        if /workshop/mahavat_agent/venv/bin/pip list 2>/dev/null | grep -q "strands-agents" || /home/participant/.local/bin/uv pip list --python /workshop/mahavat_agent/venv/bin/python 2>/dev/null | grep -q "strands-agents"; then
             check_pass "Strands agents package installed"
         else
             check_warn "Strands agents package not installed"
