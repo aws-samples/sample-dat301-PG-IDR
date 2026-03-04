@@ -391,9 +391,7 @@ chown participant:participant /home/participant/.bashrc
 chown -R participant:participant /home/participant/.cache 2>/dev/null || true
 chown -R participant:participant /home/participant/.local 2>/dev/null || true
 
-sleep 300
-
-# Clean up bootstrap incidents from DynamoDB
+# Clean up bootstrap incidents from DynamoDB (no delay needed)
 echo "🧹 Truncating DynamoDB table: $DYNAMODB_TABLE in region: $REGION"
 
 # Get all keys and delete one by one (simple approach)
