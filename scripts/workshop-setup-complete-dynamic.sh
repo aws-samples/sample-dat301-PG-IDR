@@ -18,8 +18,9 @@ echo "📋 Using Region: $REGION"
 
 # Retry function with exponential backoff
 retry_with_backoff() {
-    local max_attempts=10
-    local delay=2
+    local max_attempts=15
+    local delay=5
+    local max_delay=60
     local attempt=1
     local command="$@"
     
@@ -35,6 +36,10 @@ retry_with_backoff() {
             return 1
         fi
         
+        # Cap delay at max_delay
+        if [ $delay -gt $max_delay ]; then
+            delay=$max_delay
+        fi
         echo "  ⏳ Waiting ${delay}s before retry..."
         sleep $delay
         delay=$((delay * 2))
@@ -279,7 +284,7 @@ echo "✅ Python dependencies installed"
 if [ -n "$IOPS_HOST" ] && [ -n "$IOPS_PASS" ]; then
     echo "🔧 Setting up pgbench on IDR IOPS instance..."
     export PGPASSWORD=$IOPS_PASS
-    retry_with_backoff "pgbench -i -s 200 -h $IOPS_HOST -p $IOPS_PORT -U $IOPS_USER -d $IOPS_DB" || echo "⚠️  pgbench setup failed (may already exist)"
+    retry_with_backoff "pgbench -i -s 200 -h $IOPS_HOST -p $IOPS_PORT -U $IOPS_USER -d $IOPS_DB 2>&1 | tail -5" || echo "⚠️  pgbench setup failed (may already exist)"
     unset PGPASSWORD
     echo "✅ pgbench setup completed"
 else
