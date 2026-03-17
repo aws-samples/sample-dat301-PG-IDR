@@ -47,6 +47,31 @@ retry_with_backoff() {
     done
 }
 
+# Wait for a secret to become available in Secrets Manager (up to 30 min)
+# Handles the race condition where CFN outputs reference secrets that
+# haven't finished being created/replicated yet.
+wait_for_secret() {
+    local secret_arn="$1"
+    local label="$2"
+    local max_wait=1800
+    local interval=30
+    local elapsed=0
+    
+    echo "  Waiting for $label secret to become available..."
+    while [ $elapsed -lt $max_wait ]; do
+        if aws secretsmanager get-secret-value --secret-id "$secret_arn" --region "$REGION" --query SecretString --output text > /tmp/${label}_secret.json 2>/dev/null; then
+            echo "  ✅ $label secret available after ${elapsed}s"
+            return 0
+        fi
+        echo "  ⏳ Secret not ready yet (${elapsed}s elapsed), waiting ${interval}s..."
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+    
+    echo "  ❌ $label secret not available after ${max_wait}s"
+    return 1
+}
+
 # Function to get CloudFormation stack output
 get_stack_output() {
     local output_key="$1"
@@ -89,10 +114,10 @@ echo "✅ Stack outputs fetched successfully"
 # Get database credentials from secrets
 echo "🔐 Fetching database credentials..."
 
-# Get Main DB credentials with retry
+# Get Main DB credentials — wait for secret to exist
 if [ -n "$MAIN_SECRET_ARN" ] && [ "$MAIN_SECRET_ARN" != "" ]; then
     echo "Fetching main database credentials..."
-    if retry_with_backoff "aws secretsmanager get-secret-value --secret-id '$MAIN_SECRET_ARN' --region $REGION --query SecretString --output text > /tmp/main_secret.json"; then
+    if wait_for_secret "$MAIN_SECRET_ARN" "main"; then
         MAIN_SECRET=$(cat /tmp/main_secret.json)
         MAIN_HOST=$(echo $MAIN_SECRET | jq -r .host)
         MAIN_PORT=$(echo $MAIN_SECRET | jq -r .port)
@@ -108,10 +133,10 @@ else
     echo "⚠️  Main secret ARN not available"
 fi
 
-# Get IDR ACU DB credentials with retry
+# Get IDR ACU DB credentials — wait for secret to exist
 if [ -n "$IDR_SECRET_ARN" ] && [ "$IDR_SECRET_ARN" != "" ]; then
     echo "Fetching IDR ACU database credentials..."
-    if retry_with_backoff "aws secretsmanager get-secret-value --secret-id '$IDR_SECRET_ARN' --region $REGION --query SecretString --output text > /tmp/idr_secret.json"; then
+    if wait_for_secret "$IDR_SECRET_ARN" "idr"; then
         IDR_SECRET=$(cat /tmp/idr_secret.json)
         IDR_HOST=$(echo $IDR_SECRET | jq -r .host)
         IDR_PORT=$(echo $IDR_SECRET | jq -r .port)
@@ -124,10 +149,10 @@ else
     echo "⚠️  IDR ACU secret ARN not available"
 fi
 
-# Get IOPS DB credentials with retry
+# Get IOPS DB credentials — wait for secret to exist
 if [ -n "$IOPS_SECRET_ARN" ] && [ "$IOPS_SECRET_ARN" != "" ]; then
     echo "Fetching IDR IOPS database credentials..."
-    if retry_with_backoff "aws secretsmanager get-secret-value --secret-id '$IOPS_SECRET_ARN' --region $REGION --query SecretString --output text > /tmp/iops_secret.json"; then
+    if wait_for_secret "$IOPS_SECRET_ARN" "iops"; then
         IOPS_SECRET=$(cat /tmp/iops_secret.json)
         IOPS_HOST=$(echo $IOPS_SECRET | jq -r .host)
         IOPS_PORT=$(echo $IOPS_SECRET | jq -r .port)
